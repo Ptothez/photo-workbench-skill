@@ -99,8 +99,7 @@ async function learning(g){
 }
 async function maintenance(g){
  const s=await refreshSummary();if(g!==generation)return;const main=$('#main');main.replaceChildren(title('资料与维护','低频资料和技术记录放在这里，日常不用阅读它们才能审核。'));
- const data=[['完整流程说明','摄影工作流_改写版.html'],['资料与预设记录','pending-review-addendum.json'],['操作与历史证据','审计/2026-10-26_接手核查/final-delivery-root-verification.json'],['当前档案核对时间','照片档案/current.json']];
- const panel=el('div','surface');for(const [text,path]of data){const row=el('div','row');row.append(el('h3','',text));const a=el('a','button','查看');a.href=path;a.target='_blank';a.rel='noopener';row.append(a);panel.append(row)}main.append(panel);
+ const panel=el('div','surface');panel.append(el('h3','','你的工作台资料'),el('p','','照片来源、分类和流程以你确认后的设置为准。需要增加教程、预设或操作记录入口时，在对话里告诉 Agent，让它连接实际可打开的资料。'),el('p','muted','当前起点未附带私人资料、历史审计或预设文件。'));main.append(panel);
  main.append(el('p','muted','档案最近更新：'+(s.catalog_at?new Date(s.catalog_at).toLocaleString('zh-CN'):'尚未建立照片档案')+'。按通知后的批次核对，不持续扫描文件。'),el('p','muted','旧记录和回收区均保留。永久清理和更改媒体不由本页自动执行。'))
 }
 async function projects(g){const s=await refreshSummary();if(g!==generation)return;const m=$('#main');m.replaceChildren(title('在途与修图','这里列出仍在工作区中的项目。是否需要修图由实际选片和你的意见确定，不把所有在途照片都当作待修图。'),link('返回摄影概况','#home'));const list=el('div','surface');for(const p of s.projects){const row=el('div','row');row.append(append(el('div'),el('h3','',p.name),el('p','muted',p.photos+' 张照片')),append(el('div','actions'),folderButton(p.path),button('提出修图意见',()=>{feedbackContext='项目：'+p.name+'；位置：'+p.path;showFeedback('workflow')})));list.append(row)}if(!s.projects.length)list.append(el('p','muted','目前没有在途项目。'));m.append(list)}

@@ -14,3 +14,5 @@
 - review_tasks.json：事项数组，含 id、category、title、question、proposal、why、paths、asset_ids、owner、priority、choices、details。choices 按问题选择 accept／confirmed／needs_change／provide_clue／deferred／keep_unknown 等；不要让用户阅读内部编号才能做决定。
 
 所附界面是可改造起点。交付前应根据已经确认的 profile 调整导航、用语、阶段和视觉，不要求所有使用者采用同一套家庭分类或主题。不要承诺未经实现的自动归档、实时监听或模型识别。
+
+- projects.json：可选在途项目数组，含 id、name、photos、path；由实际批次证据更新。维护页只展示已连接的真实资料，未附带作者私人资源入口。
