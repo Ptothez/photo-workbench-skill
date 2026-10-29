@@ -1,0 +1,8 @@
+__pycache__/
+*.pyc
+test-runs/
+data/
+*.sqlite
+*.sqlite-*
+profile.json
+.env
