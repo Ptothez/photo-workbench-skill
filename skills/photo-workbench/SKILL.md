@@ -1,5 +1,6 @@
 ---
 name: photo-workbench
+version: 1.1.0
 description: 为使用者搭建或改造摄影筛选、整理、主题素材池和影集工作台。先了解照片来源、留存目标、选片方式与审核习惯，再连接真实照片、设计分类与反馈闭环；不照搬作者的私人分类或审美规则。Build a personalized photography workbench after understanding the user's workflow.
 ---
 
@@ -21,7 +22,9 @@ description: 为使用者搭建或改造摄影筛选、整理、主题素材池�
 
 ## 构建与使用
 
-先看 [最小运行方式](references/quickstart.md)。`scripts/bootstrap.py` 接受已经确认的 profile，在新目录创建一个可运行的本地工作台。随附的是可改造的起点，不是装上就自动看完所有照片的服务。
+先看 [最小运行方式](references/quickstart.md)。`scripts/bootstrap.py` 接受已经确认的 profile，在新目录创建一个可运行的本地工作台。Windows 独立桌面入口可按 [桌面说明](references/windows-desktop.md) 选择启用。审核任务用明确的 `review_lane` 区分当前要决定、待补充、可选复查和等待线索；不要按技术缺项数量制造人工待办。
+
+随附的是可改造的起点，不是装上就自动看完所有照片的服务。
 
 界面至少提供：
 - 日常进度：输入、整理中、需修图、已入库和下一步；仅显示有实际记录的状态。

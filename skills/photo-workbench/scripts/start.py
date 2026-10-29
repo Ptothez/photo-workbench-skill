@@ -5,18 +5,22 @@ from http.server import BaseHTTPRequestHandler,ThreadingHTTPServer
 from pathlib import Path
 from urllib.parse import urlparse,parse_qs
 import feedback as fb
+from read_cache import read_json
 ROOT=Path(__file__).resolve().parent;DATA=ROOT/'data';fb.PROJECT=ROOT;fb.BASE=DATA;TOKEN=secrets.token_urlsafe(32)
-def read(name):return json.loads((DATA/name).read_text(encoding='utf-8'))
+def read(name):return read_json(DATA/name)
 def profile():return json.loads((ROOT/'profile.json').read_text(encoding='utf-8'))
 def catalogue():return read('catalog.json')
 def tasks():
-    rows=read('review_tasks.json')
+    rows=[dict(r) for r in read('review_tasks.json')]
     for r in rows:r['source_version']=fb.digest({k:v for k,v in r.items() if k!='source_version'})
     return rows
 def state(r,s):
     if r.get('owner') in {'Agent','system'}:return 'agent'
     d=s['decisions'].get(r['id'])
-    if not d or d.get('source_version')!=r['source_version'] or d.get('action')=='reopen':return 'pending'
+    if not d or d.get('source_version')!=r['source_version'] or d.get('action')=='reopen':
+        lane=r.get('review_lane','pending')
+        if lane not in {'pending','info','optional','clues'}:raise ValueError('Invalid review lane')
+        return lane
     if d['action']=='deferred':return 'deferred'
     if d['action'] in {'accept','reject','keep_unknown','not_this_round'}:return 'done'
     receipt=s['receipts'].get(d.get('event_id'));return 'done' if receipt and receipt['result']=='applied' else 'waiting'
@@ -58,9 +62,9 @@ class Handler(BaseHTTPRequestHandler):
         if not self.trusted():return self.send({'error':'Host invalid'},403)
         url=urlparse(self.path);q={k:v[0] for k,v in parse_qs(url.query).items()};s=fb.projection(DATA)
         try:
-            if url.path=='/api/health':return self.send(dict(app='photo-workbench',version=1))
+            if url.path=='/api/health':return self.send(dict(app='photo-workbench',version=2,instance=hashlib.sha256(str(ROOT.resolve()).upper().encode()).hexdigest()[:16].upper()))
             if url.path=='/api/v2/summary':
-                rows=tasks();counts={k:sum(state(r,s)==k for r in rows) for k in ['pending','waiting','done','deferred']};cats={r['category']:sum(x['category']==r['category'] and state(x,s)=='pending' for x in rows) for r in rows};intake=Path(profile()['source_roots'][0]);return self.send(dict(counts=counts,categories=cats,assets=len(catalogue()),projects=read('projects.json') if (DATA/'projects.json').exists() else [],intake_files=sum(p.is_file() for p in intake.rglob('*')) if intake.is_dir() else 0,intake_path=str(intake),revision=s['revision'],catalog_at=None,token=TOKEN))
+                rows=tasks();counts={k:sum(state(r,s)==k for r in rows) for k in ['pending','info','optional','clues','waiting','done','deferred']};cats={r['category']:sum(x['category']==r['category'] and state(x,s)=='pending' for x in rows) for r in rows};intake=Path(profile()['source_roots'][0]);return self.send(dict(counts=counts,categories=cats,assets=len(catalogue()),projects=read('projects.json') if (DATA/'projects.json').exists() else [],intake_files=sum(p.is_file() for p in intake.rglob('*')) if intake.is_dir() else 0,intake_path=str(intake),revision=s['revision'],catalog_at=None,stages=profile()['stages'],token=TOKEN))
             if url.path=='/api/library':return self.send(search(q.get('q',''),q.get('page',1)))
             if url.path=='/api/v2/collections':
                 sections=profile()['collections'];section=q.get('section','');section=section if any(x['id']==section for x in sections) else sections[0]['id'];rows=[r for r in read('collections.json') if r['section']==section];page=max(1,int(q.get('page',1)));return self.send(dict(sections=sections,active_section=section,items=[{k:v for k,v in r.items() if k!='members'} for r in rows[(page-1)*24:page*24]],total=len(rows),page=page))

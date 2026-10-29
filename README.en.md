@@ -1,46 +1,47 @@
-# Give Your Photos a Clear Place
+# Give every photo a clear place
 
 [简体中文](README.md) | [English](README.en.md)
 
-Photos arrive from phones, cameras, and film scans. Which need sorting or editing? Which belong in a series or a future photobook? This skill helps your AI understand your goals first, then build a photography workbench for browsing, progress, and decisions.
+Photos arrive from phones, cameras and scans. Which still need sorting, which need editing, and which belong in a theme or a book? This Skill helps an AI Agent understand your goals, then build a local workbench for browsing photos, following progress and making decisions.
 
-It does not copy the author's family categories, album themes, or taste. Your comments remain intact, with a record of what was done. Reusable experience becomes a rule only after you adopt it and it is tested across different situations.
+Your categories, retention limits and taste come first. Feedback keeps your original words and the action taken. Reusable lessons become active rules only after your adoption and evidence from multiple situations.
 
-## Install and Start
+## Install and begin
 
 ```bash
 npx -y skills add Ptothez/photo-workbench-skill -g --all
 ```
 
-Then ask your AI:
+Tell your Agent:
 
-> Build a photography workbench for me. I want to preserve family memories and develop photo series. First confirm where my photos come from, what to keep, how I select pictures, and which decisions need my input.
+> Help me build a photography workbench for family records and future photo books. First confirm where photos come from, what to keep, how I select them, and which decisions need me.
 
-The AI should read existing material and ask only about gaps that affect the design. It creates your workbench after you confirm the plan.
+The Agent reads existing context and asks only what affects the design. It creates the workbench after you confirm the plan, without copying the author's personal categories or rules.
 
-## Everyday Use
+## Everyday use
 
-- See incoming photos, sorting and editing progress, and who handles the next step.
-- Browse collections and themes, then individual photos. Enlarge a photo or locate its exact file.
-- Review everything in one queue: view the photos, understand the question and suggestion, make a decision, and continue.
-- Apply photo-specific corrections to those photos. Keep broader workflow and aesthetic rules separate, with original feedback, adoption, validation, and activation records.
+- See incoming photos, sorting and editing progress, and who acts next.
+- Open your themes or collections, browse individual previews, enlarge them and locate the exact original file.
+- Use one review entry with separate queues for decisions needed now, missing information, optional checks and external clues. Agent-verifiable work stays with the Agent.
+- Read a concrete question, choose or comment, save and move on. Saved decisions, actions awaiting execution and completed work remain distinct.
+- Apply photo feedback to photos; keep sources for workflow and taste lessons, then propose, adopt and validate reusable rules.
 
-## What Is Included
+## Browser or Windows desktop
 
-A building and acceptance skill, a feedback protocol, an adaptable interface, and a local reference server using the Python standard library. The bootstrap script requires a confirmed needs profile and refuses to overwrite an existing directory. The default trigger is an explicit user message, not a background watcher.
+The browser option needs Python 3.10+ and uses a standard-library local service. The optional Windows desktop host manages its own window and service, reconnects after service failure, and supports desktop and taskbar reopening. It creates no photo watcher or scheduled sorting job.
 
-This is not an automatic photo editor with an embedded AI model. Your AI Agent must inspect actual images and implement classification, archiving, and learning within your authorization. An empty page or working API is not proof that photo selection is finished.
+Desktop builds need Windows x64, the .NET Framework 4.8 compiler, Python and WebView2 Runtime. The build downloads a pinned SDK from official NuGet and verifies SHA-256. Only source is published. See [quickstart](skills/photo-workbench/references/quickstart.md) and [Windows desktop instructions](skills/photo-workbench/references/windows-desktop.md).
 
-## Requirements and Checks
+## Scope and checks
 
-A Skills-capable AI client and Python 3.10+. The UI has no build dependencies. Your Agent must choose and validate suitable preview tools for RAW, PSD, and high-bit-depth scans in your environment.
+This is a Skill and local interface for work performed by your Agent. Actual image inspection, classification, preview generation, verified copying and archiving require the Agent and your authorization. An empty page or a filename guess is not completed selection. RAW, PSD and high-bit-depth scans need suitable preview tools.
 
 ```bash
 python skills/photo-workbench/scripts/test_runtime.py -q
 ```
 
-Synthetic tests cover confirmed initialization, overwrite protection, saved feedback, conflict rejection, and reading feedback in a later execution context. Native file navigation, app windows, and visual acceptance still require testing on the user's system.
+Synthetic tests cover confirmed creation, overwrite refusal, four review lanes, feedback persistence, conflict rejection, next-run context, cache invalidation and desktop options. The desktop source is also compiled on Windows. Exact file location, pinned-icon reopening, previews and interruption recovery must still be accepted on each user's machine. All Agent clients and operating systems are not claimed as tested.
 
-No personal photos, chats, identities, private rules, databases, storage addresses, or credentials are included. Your data stays in your chosen local directory. The server binds only to loopback.
+No real photos, conversations, identities, private rules, databases, storage addresses or credentials are included. Data stays in your chosen local folder; the server binds only to loopback.
 
-MIT. See [LICENSE](LICENSE).
+MIT; see [LICENSE](LICENSE).

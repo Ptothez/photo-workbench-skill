@@ -28,8 +28,27 @@ class Portable(unittest.TestCase):
    self.assertEqual(call('/api/v2/collections?section=themes')[1]['active_section'],'my-collection')
    (app/'data/catalog.json').write_text(json.dumps([dict(id='one',name='flower'),dict(id='two',name='flower')]),encoding='utf-8')
    self.assertEqual([p['id'] for p in runtime.search('flower',ids=['two'])['items']],['two'])
-   body=dict(revision=0,scope='workflow',text='Synthetic feedback preserved verbatim.')
+   rows=[dict(id=lane,category='test',title=lane,owner='user',review_lane=lane,asset_ids=[],paths=[],choices=['keep_unknown']) for lane in ['pending','info','optional','clues']]
+   (app/'data/review_tasks.json').write_text(json.dumps(rows),encoding='utf-8')
+   summary=call('/api/v2/summary')[1];self.assertTrue(all(summary['counts'][k]==1 for k in ['pending','info','optional','clues']))
+   version=runtime.tasks()[0]['source_version']
+   for _ in range(2):self.assertEqual(call('/api/v2/queue?view=pending')[1]['total'],1)
+   self.assertEqual(runtime.tasks()[0]['source_version'],version)
+   task=call('/api/v2/queue?view=info')[1]['items'][0]
+   self.assertEqual(call('/api/v2/decision',dict(revision=0,task_id='info',source_version=task['source_version'],action='keep_unknown'),state['token'])[0],200)
+   counts=call('/api/v2/summary')[1]['counts'];self.assertEqual(counts['info'],0);self.assertEqual(counts['done'],1);self.assertEqual(counts['optional'],1);self.assertEqual(counts['clues'],1)
+   body=dict(revision=1,scope='workflow',text='Synthetic feedback preserved verbatim.')
    self.assertEqual(call('/api/v2/suggestion',body,state['token'])[0],200);self.assertEqual(call('/api/v2/suggestion',body,state['token'])[0],409);self.assertEqual(call('/api/v2/suggestion',body)[0],403)
-   self.assertEqual(call('/api/v2/learning')[1]['suggestions'][0]['text'],body['text']);ctx=runtime.fb.context(app/'data');self.assertEqual(ctx['pending_feedback'][0]['payload']['text'],body['text']);self.assertFalse(ctx['active_rules'])
+   self.assertEqual(call('/api/v2/learning')[1]['suggestions'][0]['text'],body['text']);ctx=runtime.fb.context(app/'data');self.assertTrue(any(x['payload'].get('text')==body['text'] for x in ctx['pending_feedback']));self.assertFalse(ctx['active_rules'])
   finally:server.shutdown();server.server_close();thread.join()
+ def test_optional_desktop_and_port_validation(self):
+  self.value.update(desktop_windows=True,port=18934);self.profile.write_text(json.dumps(self.value),encoding='utf-8')
+  app=bootstrap.create(self.profile,self.folder/'native')
+  self.assertTrue((app/'app/windows/PhotographyWorkbench.cs').is_file());self.assertEqual((app/'desktop-port.txt').read_text(),'18934');self.assertIn('--port 18934',(app/'README.md').read_text(encoding='utf-8'))
+  self.value['port']=0;self.profile.write_text(json.dumps(self.value),encoding='utf-8')
+  with self.assertRaises(ValueError):bootstrap.create(self.profile,self.folder/'invalid')
+  self.assertFalse((self.folder/'invalid').exists())
+ def test_cached_reads_reload_changed_content(self):
+  from read_cache import read_json
+  f=self.folder/'cached.json';f.write_text('[1]',encoding='utf-8');self.assertEqual(read_json(f),[1]);f.write_text('[1,2]',encoding='utf-8');self.assertEqual(read_json(f),[1,2])
 if __name__=='__main__':unittest.main()

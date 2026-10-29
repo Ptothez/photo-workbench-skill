@@ -7,15 +7,20 @@ def create(profile_path,destination):
     if profile['update_trigger']!='manual_message':raise ValueError('此起点只实现会话通知后按批执行；其他触发需单独设计和授权')
     for c in profile['collections']:
         if not all(c.get(k) for k in ['id','title','description']):raise ValueError('每个分类需要 id、名称和用途')
+    port=profile.get('port',8932)
+    if type(port) is not int or not 1024<=port<=65535:raise ValueError('端口须为 1024–65535 的整数')
     dest=Path(destination).resolve();dest.mkdir(parents=True,exist_ok=False);skill=Path(__file__).resolve().parents[1];(dest/'data').mkdir();(dest/'assets').mkdir()
-    for name in ['feedback.py','start.py']:
+    for name in ['feedback.py','start.py','read_cache.py']:
         shutil.copyfile(skill/'scripts'/name,dest/name)
     for f in (skill/'assets').iterdir():
         if f.is_file() and f.name!='index.html':shutil.copyfile(f,dest/'assets'/f.name)
     shutil.copyfile(skill/'assets/index.html',dest/'index.html')
+    if profile.get('desktop_windows') is True:
+        shutil.copytree(skill/'desktop/windows',dest/'app/windows')
+        (dest/'desktop-port.txt').write_text(str(port),encoding='utf-8')
     (dest/'profile.json').write_text(json.dumps(profile,ensure_ascii=False,indent=2),encoding='utf-8')
     for name,value in [('catalog.json',[]),('review_tasks.json',[]),('collections.json',[]),('projects.json',[]),('legacy_feedback.json',{})]:
         (dest/'data'/name).write_text(json.dumps(value,ensure_ascii=False),encoding='utf-8')
-    (dest/'README.md').write_text('用户确认的目标、流程与分类见 profile.json。\n手动启动：python start.py --port 8932\n每次处理照片前：python feedback.py context --root .\n需要 Agent 在真实盘点、看图与核验后更新 data/，空工作台不表示已完成筛选。\n',encoding='utf-8');return dest
+    (dest/'README.md').write_text(f'用户确认的目标、流程与分类见 profile.json。\n手动启动：python start.py --port {port}\n每次处理照片前：python feedback.py context --root .\n需要 Agent 在真实盘点、看图与核验后更新 data/，空工作台不表示已完成筛选。\n',encoding='utf-8');return dest
 if __name__=='__main__':
     p=argparse.ArgumentParser();p.add_argument('--profile',required=True);p.add_argument('--destination',required=True);a=p.parse_args();print(create(a.profile,a.destination))
