@@ -1,4 +1,5 @@
 """Portable local workbench reference runtime; data is supplied by the Agent."""
+import ctypes
 import argparse,hashlib,json,mimetypes,os,secrets,shlex,subprocess,sys
 from http.server import BaseHTTPRequestHandler,ThreadingHTTPServer
 from pathlib import Path
@@ -26,6 +27,29 @@ def safe_file(path):
     return f
 def search(q='',page=1,ids=None):
     terms=shlex.split(q.casefold());rows=[p for p in catalogue() if (ids is None or p['id'] in ids) and all(t in ' '.join(str(p.get(k,'')) for k in ['name','description','theme','month','equipment']).casefold() for t in terms)];page=max(1,int(page));return dict(items=rows[(page-1)*30:page*30],total=len(rows),page=page)
+def select_file(path):
+    target=Path(path).resolve()
+    if not target.is_file():raise FileNotFoundError('原文件不存在或当前无法访问')
+    if os.name!='nt':raise OSError('此定位实现仅用于 Windows')
+    shell=ctypes.WinDLL('shell32');ole=ctypes.WinDLL('ole32');ptr=ctypes.c_void_p()
+    ole.CoInitialize.argtypes=[ctypes.c_void_p];ole.CoInitialize.restype=ctypes.c_long
+    ole.CoTaskMemFree.argtypes=[ctypes.c_void_p];ole.CoUninitialize.argtypes=[]
+    shell.SHParseDisplayName.argtypes=[ctypes.c_wchar_p,ctypes.c_void_p,ctypes.POINTER(ctypes.c_void_p),ctypes.c_ulong,ctypes.c_void_p];shell.SHParseDisplayName.restype=ctypes.c_long
+    shell.SHOpenFolderAndSelectItems.argtypes=[ctypes.c_void_p,ctypes.c_uint,ctypes.c_void_p,ctypes.c_ulong];shell.SHOpenFolderAndSelectItems.restype=ctypes.c_long
+    initialized=ole.CoInitialize(None)
+    if initialized<0:raise OSError('无法初始化文件定位组件：'+hex(initialized&0xffffffff))
+    try:
+        result=shell.SHParseDisplayName(str(target),None,ctypes.byref(ptr),0,None)
+        if result<0:raise OSError('无法定位此文件：'+hex(result&0xffffffff))
+        # With cidl=0 the PIDL is the item, not a folder: the Shell opens its
+        # parent and selects this exact file. HRESULT S_OK confirms acceptance.
+        result=shell.SHOpenFolderAndSelectItems(ptr,0,None,0)
+        if result!=0:raise OSError('资源管理器未完成文件定位：'+hex(result&0xffffffff))
+        return dict(path=str(target),selected_file=True,shell_result='S_OK')
+    finally:
+        if ptr:ole.CoTaskMemFree(ptr)
+        ole.CoUninitialize()
+
 class Handler(BaseHTTPRequestHandler):
     def trusted(self):return self.headers.get('Host') in {f'127.0.0.1:{self.server.server_port}',f'localhost:{self.server.server_port}'}
     def send(self,value,status=200,kind='application/json; charset=utf-8'):
@@ -36,10 +60,10 @@ class Handler(BaseHTTPRequestHandler):
         try:
             if url.path=='/api/health':return self.send(dict(app='photo-workbench',version=1))
             if url.path=='/api/v2/summary':
-                rows=tasks();counts={k:sum(state(r,s)==k for r in rows) for k in ['pending','waiting','done','deferred']};cats={r['category']:sum(x['category']==r['category'] and state(x,s)=='pending' for x in rows) for r in rows};intake=Path(profile()['source_roots'][0]);return self.send(dict(counts=counts,categories=cats,assets=len(catalogue()),projects=[],intake_files=sum(p.is_file() for p in intake.rglob('*')) if intake.is_dir() else 0,intake_path=str(intake),revision=s['revision'],catalog_at=None,token=TOKEN))
+                rows=tasks();counts={k:sum(state(r,s)==k for r in rows) for k in ['pending','waiting','done','deferred']};cats={r['category']:sum(x['category']==r['category'] and state(x,s)=='pending' for x in rows) for r in rows};intake=Path(profile()['source_roots'][0]);return self.send(dict(counts=counts,categories=cats,assets=len(catalogue()),projects=read('projects.json') if (DATA/'projects.json').exists() else [],intake_files=sum(p.is_file() for p in intake.rglob('*')) if intake.is_dir() else 0,intake_path=str(intake),revision=s['revision'],catalog_at=None,token=TOKEN))
             if url.path=='/api/library':return self.send(search(q.get('q',''),q.get('page',1)))
             if url.path=='/api/v2/collections':
-                sections=profile()['collections'];section=q.get('section','');section=section if any(x['id']==section for x in sections) else sections[0]['id'];rows=[r for r in read('collections.json') if r['section']==section];page=max(1,int(q.get('page',1)));return self.send(dict(sections=sections,items=[{k:v for k,v in r.items() if k!='members'} for r in rows[(page-1)*24:page*24]],total=len(rows),page=page))
+                sections=profile()['collections'];section=q.get('section','');section=section if any(x['id']==section for x in sections) else sections[0]['id'];rows=[r for r in read('collections.json') if r['section']==section];page=max(1,int(q.get('page',1)));return self.send(dict(sections=sections,active_section=section,items=[{k:v for k,v in r.items() if k!='members'} for r in rows[(page-1)*24:page*24]],total=len(rows),page=page))
             if url.path=='/api/v2/album':
                 album=next(r for r in read('collections.json') if r['id']==q.get('id'));result=search(q.get('q',''),q.get('page',1),album['members']);result['album']={k:v for k,v in album.items() if k!='members'};return self.send(result)
             if url.path=='/api/v2/queue':
@@ -81,7 +105,7 @@ class Handler(BaseHTTPRequestHandler):
                 if self.path=='/api/locate' and not target.is_file():raise ValueError('具体照片不存在')
                 if self.path=='/api/open' and not target.is_dir():raise ValueError('目录不存在')
                 if os.name=='nt':
-                    if target.is_file():subprocess.Popen(['explorer.exe','/select,',str(target)])
+                    if target.is_file():select_file(target)
                     else:os.startfile(str(target))
                 elif sys.platform=='darwin':subprocess.Popen(['open','-R',str(target)] if target.is_file() else ['open',str(target)])
                 else:subprocess.Popen(['xdg-open',str(target.parent if target.is_file() else target)])

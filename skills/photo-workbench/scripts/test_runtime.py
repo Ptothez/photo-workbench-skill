@@ -9,7 +9,7 @@ import start as runtime
 class Portable(unittest.TestCase):
  def setUp(self):
   self.folder=Path(os.environ.get('PHOTO_WORKBENCH_TEST_ROOT',str(Path(tempfile.gettempdir())/'photo-workbench-tests')))/uuid.uuid4().hex;self.folder.mkdir(parents=True);self.profile=self.folder/'profile.json'
-  self.value=dict(purpose='synthetic collection',source_roots=[str(self.folder/'incoming')],stages=['incoming','editing','archived'],review_kinds=['selection'],update_trigger='manual_message',collections=[dict(id='themes',title='Synthetic themes',description='User-confirmed test grouping')],confirmed_by_user=True)
+  self.value=dict(purpose='synthetic collection',source_roots=[str(self.folder/'incoming')],stages=['incoming','editing','archived'],review_kinds=['selection'],update_trigger='manual_message',collections=[dict(id='my-collection',title='Synthetic themes',description='User-confirmed test grouping')],confirmed_by_user=True)
   self.profile.write_text(json.dumps(self.value),encoding='utf-8')
  def test_requires_user_confirmation_and_preserves_existing_directory(self):
   self.value['confirmed_by_user']=False;self.profile.write_text(json.dumps(self.value),encoding='utf-8')
@@ -25,6 +25,9 @@ class Portable(unittest.TestCase):
    except HTTPError as response:return response.code,json.load(response)
   try:
    code,state=call('/api/v2/summary');self.assertEqual(code,200);self.assertEqual(state['assets'],0)
+   self.assertEqual(call('/api/v2/collections?section=themes')[1]['active_section'],'my-collection')
+   (app/'data/catalog.json').write_text(json.dumps([dict(id='one',name='flower'),dict(id='two',name='flower')]),encoding='utf-8')
+   self.assertEqual([p['id'] for p in runtime.search('flower',ids=['two'])['items']],['two'])
    body=dict(revision=0,scope='workflow',text='Synthetic feedback preserved verbatim.')
    self.assertEqual(call('/api/v2/suggestion',body,state['token'])[0],200);self.assertEqual(call('/api/v2/suggestion',body,state['token'])[0],409);self.assertEqual(call('/api/v2/suggestion',body)[0],403)
    self.assertEqual(call('/api/v2/learning')[1]['suggestions'][0]['text'],body['text']);ctx=runtime.fb.context(app/'data');self.assertEqual(ctx['pending_feedback'][0]['payload']['text'],body['text']);self.assertFalse(ctx['active_rules'])

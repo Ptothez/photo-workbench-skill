@@ -40,10 +40,10 @@ async function home(g){
 }
 function dict(name,count,description,action,run){return {name,count,description,action,run}}
 async function libraryView(g){
- const params=new URLSearchParams(location.hash.split('?')[1]||''),section=params.get('section')||'themes',album=params.get('album')||'',search=params.get('search')||'',page=Math.max(1,Number(params.get('page')||1)),all=params.get('all')==='1';
+ const params=new URLSearchParams(location.hash.split('?')[1]||''),requestedSection=params.get('section')||'',album=params.get('album')||'',search=params.get('search')||'',page=Math.max(1,Number(params.get('page')||1)),all=params.get('all')==='1';
  const main=$('#main');main.replaceChildren(title('照片库','先选主题或分类，再看这一组的每张照片。照片可以在多个主题里出现，原件只按原有位置保存。'));
  const tools=el('form','tools'),input=el('input');input.type='search';input.placeholder='搜索姓名、场景、年月或设备';input.setAttribute('aria-label','搜索照片');input.value=search;const go=el('button','primary','搜索照片');tools.append(input,go);tools.onsubmit=e=>{e.preventDefault();location.hash='library?'+new URLSearchParams({search:input.value.trim(),all:'1'})};main.append(tools);
- const groups=await get('/api/v2/collections?'+new URLSearchParams({section,page}));if(g!==generation)return;
+ const groups=await get('/api/v2/collections?'+new URLSearchParams({section:requestedSection,page}));if(g!==generation)return;const section=groups.active_section||requestedSection;
  const tabs=el('div','pills');for(const c of groups.sections){const b=button(c.title,()=>{location.hash='library?'+new URLSearchParams({section:c.id})});if(c.id===section&&!search&&!all)b.className='chosen';tabs.append(b)}tabs.append(button('全部照片',()=>{location.hash='library?all=1'}));main.append(tabs);
  if(!album&&!search&&!all){
   const current=groups.sections.find(x=>x.id===section);main.append(el('h2','',current?.title||'照片集'),el('p','muted',(current?.description||'')+' 共 '+groups.total+' 个照片集。'));
@@ -101,7 +101,7 @@ async function maintenance(g){
  const s=await refreshSummary();if(g!==generation)return;const main=$('#main');main.replaceChildren(title('资料与维护','低频资料和技术记录放在这里，日常不用阅读它们才能审核。'));
  const data=[['完整流程说明','摄影工作流_改写版.html'],['资料与预设记录','pending-review-addendum.json'],['操作与历史证据','审计/2026-10-26_接手核查/final-delivery-root-verification.json'],['当前档案核对时间','照片档案/current.json']];
  const panel=el('div','surface');for(const [text,path]of data){const row=el('div','row');row.append(el('h3','',text));const a=el('a','button','查看');a.href=path;a.target='_blank';a.rel='noopener';row.append(a);panel.append(row)}main.append(panel);
- main.append(el('p','muted','档案最近更新：'+new Date(s.catalog_at).toLocaleString('zh-CN')+'。按通知后的批次核对，不持续扫描文件。'),el('p','muted','旧记录和回收区均保留。永久清理和更改媒体不由本页自动执行。'))
+ main.append(el('p','muted','档案最近更新：'+(s.catalog_at?new Date(s.catalog_at).toLocaleString('zh-CN'):'尚未建立照片档案')+'。按通知后的批次核对，不持续扫描文件。'),el('p','muted','旧记录和回收区均保留。永久清理和更改媒体不由本页自动执行。'))
 }
 async function projects(g){const s=await refreshSummary();if(g!==generation)return;const m=$('#main');m.replaceChildren(title('在途与修图','这里列出仍在工作区中的项目。是否需要修图由实际选片和你的意见确定，不把所有在途照片都当作待修图。'),link('返回摄影概况','#home'));const list=el('div','surface');for(const p of s.projects){const row=el('div','row');row.append(append(el('div'),el('h3','',p.name),el('p','muted',p.photos+' 张照片')),append(el('div','actions'),folderButton(p.path),button('提出修图意见',()=>{feedbackContext='项目：'+p.name+'；位置：'+p.path;showFeedback('workflow')})));list.append(row)}if(!s.projects.length)list.append(el('p','muted','目前没有在途项目。'));m.append(list)}
 async function render(){const g=++generation;const raw=location.hash.slice(1).split('?')[0];const page=Object.hasOwn(labels,raw)?raw:'home';$('#breadcrumb').textContent=labels[page];document.querySelectorAll('[data-page]').forEach(a=>a.classList.toggle('on',a.dataset.page===page));$('#main').replaceChildren(el('p','muted','正在读取…'));try{await ({home,library:libraryView,review,learning,maintenance,projects}[page])(g)}catch(e){if(g===generation)errorBox(e)}}
